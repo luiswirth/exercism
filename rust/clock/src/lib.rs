@@ -1,38 +1,36 @@
-use std::fmt;
+#[derive(Debug, PartialEq)]
+pub struct Clock {
+    total_minutes: i16,
+}
 
-pub struct Clock(i32);
+const DAY_MINS: i16 = 60 * 24;
 
 impl Clock {
-    pub fn new(hours: i32, minutes: i32) -> Self {
-        Clock(hours * 60 + minutes)
+    pub fn minutes(&self) -> i16 {
+	self.total_minutes % 60
     }
 
-    pub fn add_minutes(&self, minutes: i32) -> Self {
-        Clock(self.0 + minutes)
+    pub fn hours(&self) -> i16 {
+	self.total_minutes / 60
     }
-}
 
-impl fmt::Display for Clock {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let hour = ((self.0 / 60) as f32).floor();
-        let minute = self.0 % 60;
-        write!(f, "{}:{}", hour, minute)
+    pub fn from_minutes(minutes: i16) -> Self {
+        Clock {
+	    total_minutes: minutes.rem_euclid(DAY_MINS)
+        }
     }
-}
 
-impl fmt::Debug for Clock {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let hour = ((self.0 / 60) as f32).floor();
-        let minute = self.0 % 60;
-        write!(f, "{}:{}", hour, minute)
+    pub fn new(hour: i16, minute: i16) -> Self {
+        Clock::from_minutes(hour * 60 + minute)
+    }
+
+    pub fn add_minutes(&self, minutes: i16) -> Self {
+        Clock::from_minutes(self.total_minutes + minutes)
     }
 }
 
-impl std::cmp::PartialEq for Clock {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.0 == rhs.0
+impl std::fmt::Display for Clock {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(f, "{:02}:{:02}", self.hours(), self.minutes())
     }
-}
-
-impl std::cmp::Eq for Clock {
 }
