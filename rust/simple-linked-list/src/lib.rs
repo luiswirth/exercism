@@ -5,6 +5,7 @@ struct Node<T> {
     next: Option<Box<Node<T>>>,
 }
 
+#[derive(Default)]
 pub struct SimpleLinkedList<T> {
     head: Option<Box<Node<T>>>,
 }
@@ -22,6 +23,10 @@ impl<T> SimpleLinkedList<T> {
             current_node = &inner_current_node.next;
         }
         len
+    }
+
+    pub fn is_empty(&self) -> bool {
+	self.len() == 0
     }
 
     pub fn push(&mut self, element: T) {
