@@ -12,12 +12,12 @@ struct Frame {
 }
 
 impl Frame {
-    fn is_strike() -> bool {
-	first_throw == 10
+    fn is_strike(&self) -> bool {
+	self.first_throw == 10
     }
 
-    fn is_spare() -> bool {
-	second_throw.is_some() && first_throw + second_throw.unwrap() == 10
+    fn is_spare(&self) -> bool {
+	self.second_throw.is_some() && self.first_throw + self.second_throw.unwrap() == 10
     }
 }
 
@@ -47,30 +47,33 @@ impl BowlingGame {
             self.frames.push(Frame {
                 first_throw: pins,
                 second_throw: None,
+		score: None,
             });
         }
         Ok(())
     }
 
-    fn frame_score(&self, i: usize) -> u16 {
-	let score = self.frames[i].first_throw + self.frames[i].second_throw.unwrap_or(0);
-	if self.frames[i].is_strike() {
-	    score += self.frames.get(i+1).unwrap_or(0);
-	    score += self.frames.get(i+2).unwrap_or(0);
-	} else if self.frames[i].is_spare() {
-
+    fn compute_frame_scores(&mut self) {
+	// reverse computation
+	for i in (0..self.frames.len()).rev() {
+	    let mut score = self.frames[i].first_throw + self.frames[i].second_throw.unwrap_or(0);
+	    if self.frames[i].is_spare() {
+		score += self.frames.get(i + 1).and_then(|f| f.score).unwrap_or(0);
+	    }
+	    if self.frames[i].is_strike() {
+		score += self.frames.get(i + 1).and_then(|f| f.score).unwrap_or(0);
+		score += self.frames.get(i + 2).and_then(|f| f.score).unwrap_or(0);
+	    }
+	    self.frames[i].score = Some(score);
 	}
     }
 
     pub fn score(&self) -> Option<u16> {
-        if self.frames.len() != 10 {
-            return None;
-        }
-        let mut score = 0;
-	for frame in &self.frames {
-	    score += frame.first_throw + frame.second_throw.unwrap_or(0);
+        if self.frames.len() >= 10 {
+	    Some(self.frames.iter().map(|f| f.score.unwrap()).sum())
+        } else {
+            None
 	}
-
-	Some(score)
+	
     }
 }
