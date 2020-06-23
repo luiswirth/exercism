@@ -1,52 +1,57 @@
+mod shared_list;
+
+use shared_list::SharedList;
 use std::collections::HashMap;
-use std::cell::RefCell;
 
-pub fn solve(input: &str) -> Option<HashMap<char, u8>> {
-    type Line = Vec<char>;
+pub fn solve(equation: &str) -> Option<HashMap<char, u8>> {
+    let operands: Vec<&str> = equation
+        .split(|c: char| !c.is_alphabetic())
+        .filter(|op| !op.is_empty())
+        .collect();
+    solve_inner(&operands, SharedList::new())
+}
 
-    let (lhs, rhs) = {
-        let s = input
-            .chars()
-            .filter(|c| !c.is_whitespace())
-            .collect::<String>();
-        let mut iter = s.splitn(2, "==");
-        (
-            iter.next().unwrap().to_string(),
-            iter.next().unwrap().to_string(),
-        )
-    };
+fn solve_inner(operands: &[&str], list: SharedList<(char, u8)>) -> Option<HashMap<char, u8>> {
+    match solve_partial(operands, &list) {
+        Err(()) => None,
+        Ok(None) => Some(list.iter().cloned().collect()),
+        Ok(Some(c)) => (0..10)
+            .skip_while(|&x| x == 0 && operands.iter().any(|op| op.starts_with(c)))
+            .filter(|&x| list.iter().all(|&(_, v)| v != x))
+            .find_map(|x| solve_inner(operands, list.prepend((c, x)))),
+    }
+}
 
-    let lhs = {
-        let mut lines = Vec::new();
-        for line in lhs.split('+') {
-            lines.push(line.chars().rev().collect::<Line>());
-        }
-        lines
-    };
+fn solve_partial(operands: &[&str], list: &SharedList<(char, u8)>) -> Result<Option<char>, ()> {
+    let sum = operands.last().ok_or(())?;
+    let summands = || operands.iter().rev().skip(1);
 
-    let rhs = rhs.chars().rev().collect::<Line>();
+    let mut col_sum: u32 = 0;
+    let mut col = 0;
 
-    let mut map = RefCell::new(input
-        .chars()
-        .filter(|c| c.is_alphabetic())
-        .map(|c| (c, 0))
-        .collect::<HashMap<char, u8>>());
+    loop {
+        let get_col = |w: &str| w.chars().rev().nth(col);
 
-    for char_val in map.borrow_mut().values_mut() {
-        for new_val in 0..9 {
-            *char_val = new_val;
-
-            for i in 0..rhs.len() {
-                if lhs
-                    .iter()
-                    .map(|line| line.get(i).expect("if none stop"))
-                    .map(|c| map.borrow().get(c).unwrap())
-                    .sum::<u8>()
-                    == *map.borrow().get(rhs.get(i).unwrap()).unwrap()
-                {}
+        for c in summands().filter_map(|op| get_col(op)) {
+            match list.iter().find(|&&(k, _)| k == c) {
+                None => return Ok(Some(c)),
+                Some(&(_, digit)) => col_sum += digit as u32,
             }
         }
-    }
 
-    Some(map)
+        match get_col(sum) {
+            None => return Ok(None),
+            Some(c) => match list.iter().find(|&&(k, _)| k == c) {
+                None => return Ok(Some(c)),
+                Some(&(_, digit)) => {
+                    if col_sum % 10 != digit as u32 {
+                        return Err(());
+                    }
+                }
+            },
+        };
+
+        col += 1;
+        col_sum /= 10; // carry to the next column
+    }
 }
